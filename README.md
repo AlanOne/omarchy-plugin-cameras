@@ -36,7 +36,7 @@ exactly for this, so the plugin stays small and only does UI + simple HTTP calls
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/YOUR_GITHUB_USERNAME/omarchy-plugin-cameras.git --enable
+omarchy plugin add https://github.com/AlanOne/omarchy-plugin-cameras.git --enable
 ```
 
 ## Set up go2rtc
@@ -45,7 +45,7 @@ The plugin needs a go2rtc instance to talk to. A ready-to-use `docker-compose.ym
 config example are bundled in this repo's [`go2rtc/`](go2rtc) folder:
 
 ```sh
-cd ~/.config/omarchy/plugins/io.github.YOUR_GITHUB_USERNAME.cameras/go2rtc
+cd ~/.config/omarchy/plugins/io.github.alanone.cameras/go2rtc
 cp go2rtc.yaml.example go2rtc.yaml
 docker compose up -d
 ```
@@ -204,13 +204,13 @@ The plugin has three settings (via Omarchy's plugin settings UI):
 Move the widget's position in the bar:
 
 ```sh
-omarchy bar move io.github.YOUR_GITHUB_USERNAME.cameras --section right
+omarchy bar move io.github.alanone.cameras --section right
 ```
 
 ## Remove
 
 ```sh
-omarchy plugin remove io.github.YOUR_GITHUB_USERNAME.cameras
+omarchy plugin remove io.github.alanone.cameras
 ```
 
 This removes the plugin, not go2rtc or its camera config — stop that separately with
