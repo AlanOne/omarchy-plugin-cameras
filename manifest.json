@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.alanone.cameras",
+  "name": "Cameras",
+  "version": "1.0.0",
+  "author": "Alan",
+  "license": "MIT",
+  "description": "Camera snapshot pill in the bar, with a popup camera switcher, live preview, and a one-click live-view launch via mpv. Talks to a local go2rtc instance, never to any camera's own protocol directly. Add, remove, and switch between cameras right from the popup — nothing to pre-configure, works with a fresh go2rtc install with zero cameras defined.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Cameras",
+    "description": "Auto-discovered camera snapshot + live view",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "go2rtcHost": "127.0.0.1:1984",
+      "go2rtcRtspHost": "127.0.0.1:8554",
+      "refreshSeconds": 30
+    },
+    "schema": [
+      {
+        "key": "go2rtcHost",
+        "type": "text",
+        "label": "go2rtc API host:port",
+        "defaultValue": "127.0.0.1:1984"
+      },
+      {
+        "key": "go2rtcRtspHost",
+        "type": "text",
+        "label": "go2rtc RTSP restream host:port",
+        "defaultValue": "127.0.0.1:8554"
+      },
+      {
+        "key": "refreshSeconds",
+        "type": "number",
+        "label": "Snapshot refresh interval (seconds)",
+        "defaultValue": 30
+      }
+    ]
+  }
+}

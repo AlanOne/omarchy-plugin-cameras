@@ -1,0 +1,20 @@
+# go2rtc config for the Cameras plugin.
+# Docs: https://github.com/AlexxIT/go2rtc
+#
+# Cameras don't need to be added here by hand — the plugin's popup has an
+# "Add camera" form that calls go2rtc's own API (PUT /api/streams?name=...&
+# src=...), which starts the stream live and writes it into this file for
+# you. This file only needs the sections below; `streams:` starts empty.
+#
+# See the plugin's README for full Reolink and Google Nest setup guides.
+
+streams: {}
+
+api:
+  listen: "127.0.0.1:1984"   # keep this bound to localhost — see the README's Security section
+
+rtsp:
+  listen: ":8554"   # re-streamed RTSP, used by mpv for the live view
+
+webrtc:
+  listen: ":8555"   # needed for Nest cameras (WebRTC-only)
