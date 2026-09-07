@@ -62,7 +62,52 @@ BarWidget {
   readonly property string snapshotUrl: selectedCamera
     ? "http://" + go2rtcHost + "/api/frame.jpeg?src=" + selectedCamera.snapshotStream + "&_t=" + refreshTick
     : ""
-  readonly property bool connected: selectedCamera !== null && snapshot.status === Image.Ready
+  // Sticky rather than a direct `snapshot.status === Image.Ready` binding:
+  // status passes through Loading on every refresh tick (source changes
+  // every refreshTick), which would otherwise flicker the bar icon's color
+  // and tooltip between connected/unreachable on every single refresh.
+  // Only a definite Ready/Error updates it; a mid-refresh Loading leaves
+  // whatever was last known standing.
+  property bool stickyConnected: false
+  readonly property bool connected: selectedCamera !== null && stickyConnected
+
+  // Double-buffered so the popup preview can refresh silently: two Image
+  // items ping-pong, each loading the next frame into whichever one ISN'T
+  // currently on screen, so the visible one never has its source changed
+  // out from under it (which is what caused the "Loading…" flash on every
+  // refresh — QtQuick.Image blanks immediately when `source` changes).
+  // `popupBufferKeyN` records which camera's frame buffer N currently
+  // holds; `popupRequestKeyN` records which camera buffer N's in-flight
+  // fetch was FOR, so a late-arriving frame for a since-abandoned camera
+  // selection is never promoted onto screen.
+  property int popupFrontBuffer: 0
+  property string popupBufferKey0: ""
+  property string popupBufferKey1: ""
+  property string popupRequestKey0: ""
+  property string popupRequestKey1: ""
+  readonly property bool popupHasFrame: root.selectedCameraKey !== ""
+    && (root.popupBufferKey0 === root.selectedCameraKey || root.popupBufferKey1 === root.selectedCameraKey)
+  readonly property bool popupLoading: snapA.status === Image.Loading || snapB.status === Image.Loading
+
+  // Kicks off loading the current snapshotUrl into whichever buffer is
+  // currently OFF screen. Called whenever there's a new frame to fetch
+  // (snapshotUrl changes — a refresh tick or a camera switch) or the popup
+  // reopens; a no-op while the popup is closed or nothing is selected.
+  function requestPopupSnapshot() {
+    if (!root.popupOpen || !root.selectedCamera) return
+    var url = root.snapshotUrl
+    var key = root.selectedCameraKey
+    if (root.popupFrontBuffer === 0) {
+      root.popupRequestKey1 = key
+      snapB.source = url
+    } else {
+      root.popupRequestKey0 = key
+      snapA.source = url
+    }
+  }
+
+  onPopupOpenChanged: if (root.popupOpen) root.requestPopupSnapshot()
+  onSnapshotUrlChanged: root.requestPopupSnapshot()
 
   // Switching cameras while editing would otherwise leave the form open
   // with the previous camera's prefilled values, silently pointed at the
@@ -70,7 +115,13 @@ BarWidget {
   // camera by accident. Doesn't affect a plain "+ Add camera" (editingKey
   // is only set while actually editing), and doesn't fire from a save's own
   // reselect (editingKey is already cleared by then).
+  //
+  // Also resets stickyConnected: it must not carry the PREVIOUS camera's
+  // connectedness into the newly selected one (popupHasFrame/popupLoading
+  // don't need an equivalent reset — they're driven by key-equality checks
+  // against the buffers, which already go false the moment the key differs).
   onSelectedCameraKeyChanged: {
+    root.stickyConnected = false
     if (root.editingKey === "") return
     root.editingKey = ""
     root.showAddForm = false
@@ -338,12 +389,18 @@ BarWidget {
   // Loaded invisibly in the bar just to track connection status for the
   // glyph color; the popup has its own visible copy so it always shows the
   // freshest frame at the moment it's opened, not whatever the bar last saw.
+  // Only Ready/Error update stickyConnected — a mid-refresh Loading is not
+  // a verdict on connectivity, just this fetch being in flight.
   Image {
     id: snapshot
     source: root.snapshotUrl
     visible: false
     asynchronous: true
     cache: false
+    onStatusChanged: {
+      if (status === Image.Ready) root.stickyConnected = true
+      else if (status === Image.Error) root.stickyConnected = false
+    }
   }
 
   BarIconButton {
@@ -461,22 +518,48 @@ BarWidget {
         color: Style.normalFillFor(root.bar.foreground, Color.accent)
         borderSpec: Border.controlSpec("normal", root.bar.foreground, Color.accent)
 
+        // Two buffers ping-ponging (see popupFrontBuffer et al. above) so a
+        // routine refresh swaps frames silently instead of blanking out to
+        // "Loading…" every refreshSeconds. Each becomes visible only once
+        // it holds a Ready frame for the CURRENTLY selected camera — not
+        // just whichever camera it was last asked to load.
         Image {
-          id: popupSnapshot
+          id: snapA
           anchors.fill: parent
           anchors.margins: Style.space(2)
-          source: root.popupOpen ? root.snapshotUrl : ""
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
           cache: false
-          visible: status === Image.Ready
+          visible: root.popupFrontBuffer === 0 && status === Image.Ready && root.popupBufferKey0 === root.selectedCameraKey
+          onStatusChanged: {
+            if (status === Image.Ready && root.popupRequestKey0 === root.selectedCameraKey) {
+              root.popupBufferKey0 = root.popupRequestKey0
+              root.popupFrontBuffer = 0
+            }
+          }
+        }
+
+        Image {
+          id: snapB
+          anchors.fill: parent
+          anchors.margins: Style.space(2)
+          fillMode: Image.PreserveAspectCrop
+          asynchronous: true
+          cache: false
+          visible: root.popupFrontBuffer === 1 && status === Image.Ready && root.popupBufferKey1 === root.selectedCameraKey
+          onStatusChanged: {
+            if (status === Image.Ready && root.popupRequestKey1 === root.selectedCameraKey) {
+              root.popupBufferKey1 = root.popupRequestKey1
+              root.popupFrontBuffer = 1
+            }
+          }
         }
 
         Text {
           anchors.centerIn: parent
-          visible: popupSnapshot.status !== Image.Ready
+          visible: !root.popupHasFrame
           textFormat: Text.PlainText
-          text: !root.selectedCamera ? "No camera" : (popupSnapshot.status === Image.Loading ? "Loading…" : "Camera unreachable")
+          text: !root.selectedCamera ? "No camera" : (root.popupLoading ? "Loading…" : "Camera unreachable")
           color: root.bar.foreground
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.bodySmall

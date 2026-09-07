@@ -63,8 +63,13 @@ Click the camera pill in the bar to open the popup:
 
 - **Camera switcher** (only shown once you have 2+ cameras) — tabs across the top to pick
   which camera the popup shows.
-- **Snapshot preview** — refreshes automatically (interval configurable).
+- **Snapshot preview** — refreshes automatically (interval configurable). Each refresh swaps
+  in silently once the new frame has actually loaded; you only see a "Loading…" placeholder
+  the first time a camera's frame loads, and "Camera unreachable" if it genuinely can't be
+  reached — a routine refresh never blanks the preview you're already looking at.
 - **Open live view** — launches `mpv` against the full-quality RTSP restream.
+- **Edit** — change a camera's name and/or stream URL(s) in place (e.g. after a password or
+  IP change), prefilled with its current values.
 - **Remove** — removes the selected camera (asks go2rtc to delete it; this also removes it
   from `go2rtc.yaml`).
 - **+ Add camera** — add a new camera: a name, a stream URL, and an optional second
