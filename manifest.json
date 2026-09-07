@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "Alan",
   "license": "MIT",
-  "description": "Camera snapshot pill in the bar, with a popup camera switcher, live preview, and a one-click live-view launch via mpv. Talks to a local go2rtc instance, never to any camera's own protocol directly. Add, remove, and switch between cameras right from the popup — nothing to pre-configure, works with a fresh go2rtc install with zero cameras defined.",
+  "description": "Camera snapshot pill in the bar, with a popup camera switcher, live preview, and a one-click live-view launch via mpv. Talks to a local go2rtc instance, never to any camera's own protocol directly, so it works with anything go2rtc supports (Reolink, ONVIF, Nest, Ring, TP-Link, Doorbird, Wyze, and more). Add, edit, remove, and switch between cameras right from the popup — nothing to pre-configure, works with a fresh go2rtc install with zero cameras defined.",
   "kinds": [
     "bar-widget"
   ],

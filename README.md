@@ -2,8 +2,11 @@
 
 A camera snapshot pill for the Omarchy bar. Click it for a popup with a live thumbnail,
 a one-click live-view launch (via `mpv`), and a switcher for however many cameras you've
-added. Add or remove cameras right from the popup — nothing to hand-edit, no fixed camera
-count. Works with Reolink (and most other RTSP/ONVIF cameras) and Google Nest cameras.
+added. Add, edit, or remove cameras right from the popup — nothing to hand-edit, no fixed
+camera count. Works with Reolink (and most other RTSP/ONVIF cameras), Google Nest, and —
+via go2rtc's own other source modules — Ring, TP-Link Tapo/Vigi/Kasa, Doorbird, Wyze,
+Xiaomi Mi Home, Tuya, Roborock, and Apple HomeKit cameras (see **Other camera systems**
+below for the less battle-tested ones).
 
 ![Cameras plugin popup](preview.png)
 
@@ -214,6 +217,58 @@ In the plugin popup, **+ Add camera** → give it a name → paste that whole UR
 **Note on battery-powered Nest doorbells/cameras:** these need to be awake/charged to
 respond to a stream request — if one shows "unreachable," check its battery before
 assuming something's misconfigured.
+
+## Other camera systems
+
+This plugin never talks to a camera vendor's own protocol — only to go2rtc's local API. So
+any camera system go2rtc has a source module for already works here, with no plugin code
+changes, the moment you have the right `src=` URL. The setup guides above (Reolink, Nest)
+are just the two systems this was originally built and tested against; everything below is
+new documentation for go2rtc's other supported systems, verified only at the level of
+**"go2rtc's API accepts this URL and stores it correctly when added exactly the way this
+plugin's Add-camera form adds it"** — tested with placeholder credentials against a real,
+running go2rtc instance for every system listed below except HomeKit. None of these have
+been verified against a real device of that type, the way Reolink/Nest have been — if
+you're the first to actually try one, an issue report on what did/didn't work would help
+fill that in.
+
+### Systems you add directly through this plugin's "Add camera" form
+
+Same as Reolink/Nest: **+ Add camera** → name → paste the URL below (with your camera's
+real values) into **Stream URL**.
+
+| System | Stream URL | Notes |
+|---|---|---|
+| **Ring** | `ring:?device_id=DEVICE_ID&refresh_token=REFRESH_TOKEN` | Get these via go2rtc's own WebUI (`http://<go2rtcHost>` → Add → Ring → log in) — it lists your Ring cameras and gives you a ready-made URL to paste in here. Two-way audio supported. |
+| **TP-Link Tapo** | `tapo://CLOUD_PASSWORD@CAMERA_IP` | Use your Tapo **cloud** account password, not an RTSP password — no separate username needed. Add `?subtype=1` for the lower-res substream. |
+| **TP-Link Vigi** | `vigi://admin:PASSWORD@CAMERA_IP` | Same family as Tapo, different sub-brand, different auth (plain admin/password). |
+| **TP-Link Kasa** | `kasa://USERNAME:PASSWORD@CAMERA_IP:19443/https/stream/mixed` | `USERNAME` is your URL-encoded email (`alex@gmail.com` → `alex%40gmail.com`), `PASSWORD` is your **base64-encoded** account password, not the plaintext. |
+| **Doorbird** | `doorbird://admin:PASSWORD@CAMERA_IP?media=video` | `?media=audio` for the audio-only stream, or drop the query param entirely for two-way audio. go2rtc's docs recommend creating a dedicated Doorbird user for this with "Watch always" + "API operator" permissions rather than reusing your main admin login. |
+
+### Systems that need go2rtc's own setup first
+
+These need an account login or device-pairing step that only go2rtc's own web UI can do —
+this plugin's Add-camera form only ever calls go2rtc's *stream* API, not the account/pairing
+APIs these rely on. Do the setup at `http://<go2rtcHost>` (`http://127.0.0.1:1984` by
+default) directly; **once added there, the camera shows up in this plugin's popup
+automatically** — same as anything else in go2rtc's stream list — with no need to touch the
+Add-camera form for it at all.
+
+- **Wyze** — WebUI → Add → Wyze → enter your Wyze Developer Portal API ID/key + account
+  email/password → select cameras. Streams locally over P2P after that; only needs internet
+  access to load the camera list.
+- **Xiaomi Mi Home** — WebUI → Add → Xiaomi → log in (may need an email/SMS verification
+  code) → select cameras. Not every Xiaomi camera model is supported — check
+  [go2rtc's tracking issue](https://github.com/AlexxIT/go2rtc/issues/1982) for yours first.
+- **Tuya** — needs a **Tuya Smart** account specifically (not Smart Life — re-add your
+  cameras to the Tuya Smart app first if they're currently in Smart Life). WebUI → Add →
+  Tuya → pick your region, log in.
+- **Roborock** (vacuums with a camera) — WebUI → Add webpage for your vacuum, or import
+  credentials from a Home Assistant Roborock integration if you already have one set up.
+- **Apple HomeKit cameras** (Aqara, Eve, and similar — works without any Apple device) —
+  go2rtc has a dedicated HomeKit pairing page (separate from the stream-URL model
+  entirely); pair the device there. A HomeKit device can only be paired to one ecosystem at
+  a time — if it's already in Apple Home or Home Assistant, unpair it from there first.
 
 ## Configure
 
