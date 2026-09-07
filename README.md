@@ -47,11 +47,15 @@ config example are bundled in this repo's [`go2rtc/`](go2rtc) folder:
 ```sh
 cd ~/.config/omarchy/plugins/io.github.alanone.cameras/go2rtc
 cp go2rtc.yaml.example go2rtc.yaml
+chmod 600 go2rtc.yaml   # cameras added below get their RTSP/Nest credentials written here
 docker compose up -d
 ```
 
 That's it — `go2rtc.yaml` starts with zero cameras configured. You add cameras from the
 plugin's popup, not by editing this file (see below); go2rtc writes them into it for you.
+The `chmod 600` above matters because from that point on this file holds real camera
+credentials in plaintext — worth doing regardless of your distro's default home-directory
+permissions, since `cp` doesn't preserve any tightened mode the example file might have.
 
 If you'd rather run go2rtc somewhere other than this machine/localhost, point the plugin's
 settings (`go2rtcHost`, `go2rtcRtspHost` — see **Configure** below) at wherever it's
@@ -251,6 +255,16 @@ This removes the plugin, not go2rtc or its camera config — stop that separatel
 - If you expose a camera to the internet via port forwarding for remote access (see the
   Reolink guide above), that exposure is on your router/camera, not on this plugin —
   usual precautions apply (non-default ports, strong passwords, current firmware).
+- Adding or editing a camera passes its URL (credentials included) as a `curl` command-line
+  argument, which is visible to any other process on the same machine for that curl
+  invocation's brief lifetime (e.g. via `ps` or `/proc/<pid>/cmdline`) — standard behavior
+  for any CLI tool taking a secret as an argument rather than piping it in, and a real
+  consideration on a genuinely shared multi-user system, not just this plugin's own
+  precaution to take. On a single-user desktop (this plugin's actual target) there's no
+  other local account to observe it.
+- `go2rtc.yaml` accumulates real camera credentials as you add cameras — keep it
+  `chmod 600` (see **Set up go2rtc** above); back it up somewhere access-controlled the
+  same way if you back it up at all, since a `tar`/`cp` won't preserve that mode for you.
 
 ## Troubleshooting
 

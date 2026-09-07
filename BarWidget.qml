@@ -26,7 +26,10 @@ BarWidget {
 
   readonly property string go2rtcHost: root.setting("go2rtcHost", "127.0.0.1:1984")
   readonly property string go2rtcRtspHost: root.setting("go2rtcRtspHost", "127.0.0.1:8554")
-  readonly property int refreshSeconds: root.setting("refreshSeconds", 30)
+  // Floored the same way popupWidth is: a 0/negative shell.json value would
+  // otherwise turn the Timer below into a tight loop spawning curl as fast
+  // as the event loop allows.
+  readonly property int refreshSeconds: Math.max(1, Number(root.setting("refreshSeconds", 30)) || 30)
   // Popup width in the same raw-pixel units as every other Style.space()
   // call (theme spacing scale applies on top) — the snapshot thumbnail is
   // width * 9/16, so widening this is what actually makes the live preview

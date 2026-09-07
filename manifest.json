@@ -21,7 +21,8 @@
     "defaults": {
       "go2rtcHost": "127.0.0.1:1984",
       "go2rtcRtspHost": "127.0.0.1:8554",
-      "refreshSeconds": 30
+      "refreshSeconds": 30,
+      "popupWidth": 340
     },
     "schema": [
       {
@@ -41,6 +42,12 @@
         "type": "number",
         "label": "Snapshot refresh interval (seconds)",
         "defaultValue": 30
+      },
+      {
+        "key": "popupWidth",
+        "type": "number",
+        "label": "Popup width (pixels, before theme spacing scale)",
+        "defaultValue": 340
       }
     ]
   }
