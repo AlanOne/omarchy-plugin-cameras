@@ -1,9 +1,16 @@
 # go2rtc backend for the Cameras plugin. `network_mode: host` is go2rtc's own
 # recommended setup — WebRTC (used for Nest cameras) negotiates its own UDP
 # ports dynamically, which doesn't play well with Docker's normal port mapping.
+#
+# Pinned to a specific version + digest rather than `:latest`, since this
+# compose file runs the image with host networking and a writable bind
+# mount — a `:latest` tag update happening upstream would otherwise mean
+# unreviewed code running with that access the next time the container
+# restarts. See README's "Updating go2rtc" section for how to bump this
+# deliberately.
 services:
   go2rtc:
-    image: alexxit/go2rtc:latest
+    image: alexxit/go2rtc:1.9.14@sha256:675c318b23c06fd862a61d262240c9a63436b4050d177ffc68a32710d9e05bae
     container_name: go2rtc
     restart: unless-stopped
     network_mode: host

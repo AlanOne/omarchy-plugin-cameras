@@ -320,7 +320,19 @@ BarWidget {
 
   Process {
     id: streamsProc
-    command: ["curl", "-fsS", "--max-time", "5", "http://" + root.go2rtcHost + "/api/streams"]
+    // go2rtcHost is user-configurable and can point at a remote instance, so
+    // this response is buffered into QML memory (StdioCollector) from a
+    // source that isn't fully trusted. --max-filesize caps it at the curl
+    // level — curl aborts the transfer once this many bytes have arrived,
+    // even without a Content-Length header — so a compromised or malicious
+    // endpoint can't hand back an unbounded body and exhaust this process.
+    // 2 MiB comfortably fits a real /api/streams response (every stream's
+    // full producer/consumer detail included) for any realistic camera
+    // count; a response this large from a legitimate endpoint would itself
+    // indicate something is wrong. A capped transfer exits non-zero and
+    // whatever partial bytes arrived fail JSON.parse below, which the
+    // existing catch already treats the same as "unreachable".
+    command: ["curl", "-fsS", "--max-time", "5", "--max-filesize", "2097152", "http://" + root.go2rtcHost + "/api/streams"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {

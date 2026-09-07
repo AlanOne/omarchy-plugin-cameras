@@ -57,6 +57,21 @@ If you'd rather run go2rtc somewhere other than this machine/localhost, point th
 settings (`go2rtcHost`, `go2rtcRtspHost` — see **Configure** below) at wherever it's
 listening.
 
+### Updating go2rtc
+
+The bundled `docker-compose.yml` pins a specific go2rtc version *and* digest
+(`alexxit/go2rtc:1.9.14@sha256:...`) rather than `:latest`. This container runs with host
+networking and a writable bind-mounted config, so silently following upstream's `:latest`
+tag would mean an unreviewed image update gets that same access the next time the container
+restarts. To update deliberately:
+
+1. Check the [go2rtc releases](https://github.com/AlexxIT/go2rtc/releases) for what changed.
+2. Get the new digest: `docker pull alexxit/go2rtc:<new-version>` then
+   `docker image inspect alexxit/go2rtc:<new-version> --format '{{index .RepoDigests 0}}'`.
+3. Update the `image:` line in `docker-compose.yml` to
+   `alexxit/go2rtc:<new-version>@<digest>`, then `docker compose up -d` to recreate the
+   container on the new image.
+
 ## Usage
 
 Click the camera pill in the bar to open the popup:
