@@ -193,13 +193,14 @@ assuming something's misconfigured.
 
 ## Configure
 
-The plugin has three settings (via Omarchy's plugin settings UI):
+The plugin has four settings (via Omarchy's plugin settings UI):
 
 | Setting | Default | Purpose |
 |---|---|---|
 | `go2rtcHost` | `127.0.0.1:1984` | go2rtc's HTTP API host:port |
 | `go2rtcRtspHost` | `127.0.0.1:8554` | go2rtc's re-streamed RTSP host:port (for `mpv`) |
 | `refreshSeconds` | `30` | How often the snapshot refreshes |
+| `popupWidth` | `340` | Popup width in pixels (before the theme's spacing scale) — the live preview is a 16:9 thumbnail scaled to this width, so e.g. `680` doubles the preview size |
 
 Move the widget's position in the bar:
 
