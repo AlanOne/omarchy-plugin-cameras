@@ -64,6 +64,15 @@ If you'd rather run go2rtc somewhere other than this machine/localhost, point th
 settings (`go2rtcHost`, `go2rtcRtspHost` — see **Configure** below) at wherever it's
 listening.
 
+**Make sure Docker itself survives a reboot.** `restart: unless-stopped` above only keeps
+the container running once `dockerd` is up — it doesn't start `dockerd` itself at boot. On
+some installs `docker.service` is left disabled and only starts lazily the first time
+something touches the Docker socket (`docker.socket` activation), which on a desktop can
+easily be minutes (or never) after the bar/shell has already started — so every camera looks
+"missing" right after a reboot even though nothing is actually misconfigured. Check with
+`systemctl is-enabled docker.service`; if it says `disabled`, run
+`sudo systemctl enable docker.service` so it starts directly at boot instead.
+
 ### Updating go2rtc
 
 The bundled `docker-compose.yml` pins a specific go2rtc version *and* digest
@@ -328,6 +337,10 @@ This removes the plugin, not go2rtc or its camera config — stop that separatel
   `docker compose logs go2rtc` for the actual connection error to the camera.
 - **Popup says "No cameras found"**: you haven't added one yet, or go2rtc isn't reachable —
   click the pill and use the "Add a camera" form, or check go2rtc is up.
+- **All cameras disappeared right after a reboot, and `docker ps` shows `go2rtc` running
+  fine once you check**: `dockerd` itself probably started late (lazy socket activation)
+  rather than the container being misconfigured — see the note on enabling `docker.service`
+  in **Set up go2rtc** above.
 - **Live view doesn't open**: confirm `mpv` is installed and on your `PATH`.
 - **Bar icon doesn't theme correctly after an update**: run
   `omarchy-shell shell rescanPlugins`; if that doesn't pick up a change, a full
