@@ -226,6 +226,43 @@ BarWidget {
     if (!streamsProc.running) streamsProc.running = true
   }
 
+  // rawName is a go2rtc stream name (e.g. "front_door_main"), not a URL —
+  // no credential exposure via argv here, just bounding how long a stalled
+  // go2rtc endpoint can hang this shared shell process.
+  function deleteStream(proc, rawName) {
+    proc.command = ["curl", "-fsS", "-X", "DELETE", "--connect-timeout", "5", "--max-time", "10",
+      "http://" + root.go2rtcHost + "/api/streams?src=" + encodeURIComponent(rawName)]
+    proc.running = true
+  }
+
+  // Escapes a value for embedding inside a double-quoted curl -K config
+  // line (backslash and double-quote are the only characters that syntax
+  // treats specially).
+  function curlConfigEscape(value) {
+    return String(value).replace(/\\/g, "\\\\").replace(/"/g, "\\\"")
+  }
+
+  // mainUrl/subUrl commonly carry RTSP/cloud credentials, and go2rtc's API
+  // only ever reads `src` from the query string (no request-body
+  // alternative) — so the credential-bearing URL can't be kept off the
+  // wire. It CAN be kept off this process's argv, which is readable by any
+  // local user via /proc/<pid>/cmdline or `ps` for as long as curl runs:
+  // stdinEnabled + write() feeds curl the URL as a -K config line over its
+  // stdin pipe instead of a command-line argument, so `command` never
+  // contains anything but literal flags. A fresh Process per call (rather
+  // than a reused singleton) sidesteps ambiguity in Quickshell's docs over
+  // whether stdinEnabled can be safely re-enabled after being turned off
+  // once on the same instance.
+  function putStream(name, url, failureMessage) {
+    var fullUrl = "http://" + root.go2rtcHost + "/api/streams?name=" + name + "&src=" + encodeURIComponent(url)
+    streamPutComponent.createObject(root, {
+      command: ["curl", "-fsS", "-X", "PUT", "--connect-timeout", "5", "--max-time", "10", "-K", "-"],
+      payload: "url = \"" + root.curlConfigEscape(fullUrl) + "\"\n",
+      failureMessage: failureMessage,
+      running: true
+    })
+  }
+
   function onMutationSettled() {
     root.pendingMutations = Math.max(0, root.pendingMutations - 1)
     if (root.pendingMutations === 0) root.refreshCameraList()
@@ -261,39 +298,31 @@ BarWidget {
     root.pendingSelectKey = slug
 
     root.pendingMutations++
-    addMainProc.command = ["curl", "-fsS", "-X", "PUT",
-      "http://" + root.go2rtcHost + "/api/streams?name=" + slug + "_main&src=" + encodeURIComponent(mainUrl)]
-    addMainProc.running = true
+    root.putStream(slug + "_main", mainUrl,
+      "Couldn't save the camera — check the stream URL and that go2rtc is reachable.")
 
     if (subUrl !== "") {
       root.pendingMutations++
-      addSubProc.command = ["curl", "-fsS", "-X", "PUT",
-        "http://" + root.go2rtcHost + "/api/streams?name=" + slug + "_sub&src=" + encodeURIComponent(subUrl)]
-      addSubProc.running = true
+      root.putStream(slug + "_sub", subUrl,
+        "Couldn't save the lower-res stream — the main stream may still have been saved.")
     }
 
     if (isEdit && oldCamera) {
       if (renamed) {
         if (oldCamera.mainRaw) {
           root.pendingMutations++
-          deleteMainProc.command = ["curl", "-fsS", "-X", "DELETE",
-            "http://" + root.go2rtcHost + "/api/streams?src=" + encodeURIComponent(oldCamera.mainRaw)]
-          deleteMainProc.running = true
+          root.deleteStream(deleteMainProc, oldCamera.mainRaw)
         }
         if (oldCamera.subRaw) {
           root.pendingMutations++
-          deleteSubProc.command = ["curl", "-fsS", "-X", "DELETE",
-            "http://" + root.go2rtcHost + "/api/streams?src=" + encodeURIComponent(oldCamera.subRaw)]
-          deleteSubProc.running = true
+          root.deleteStream(deleteSubProc, oldCamera.subRaw)
         }
       } else if (oldCamera.subRaw && subUrl === "") {
         // Same camera, but the lower-res stream was cleared — the PUT
         // above only overwrote mainUrl, so the now-unwanted sub stream
         // needs an explicit delete rather than being left orphaned.
         root.pendingMutations++
-        deleteSubProc.command = ["curl", "-fsS", "-X", "DELETE",
-          "http://" + root.go2rtcHost + "/api/streams?src=" + encodeURIComponent(oldCamera.subRaw)]
-        deleteSubProc.running = true
+        root.deleteStream(deleteSubProc, oldCamera.subRaw)
       }
     }
 
@@ -309,15 +338,11 @@ BarWidget {
     root.mutationError = ""
     if (camera.mainRaw) {
       root.pendingMutations++
-      deleteMainProc.command = ["curl", "-fsS", "-X", "DELETE",
-        "http://" + root.go2rtcHost + "/api/streams?src=" + encodeURIComponent(camera.mainRaw)]
-      deleteMainProc.running = true
+      root.deleteStream(deleteMainProc, camera.mainRaw)
     }
     if (camera.subRaw) {
       root.pendingMutations++
-      deleteSubProc.command = ["curl", "-fsS", "-X", "DELETE",
-        "http://" + root.go2rtcHost + "/api/streams?src=" + encodeURIComponent(camera.subRaw)]
-      deleteSubProc.running = true
+      root.deleteStream(deleteSubProc, camera.subRaw)
     }
   }
 
@@ -362,19 +387,23 @@ BarWidget {
     }
   }
 
-  Process {
-    id: addMainProc
-    onExited: function(exitCode) {
-      if (exitCode !== 0) root.mutationError = "Couldn't save the camera — check the stream URL and that go2rtc is reachable."
-      root.onMutationSettled()
-    }
-  }
-
-  Process {
-    id: addSubProc
-    onExited: function(exitCode) {
-      if (exitCode !== 0) root.mutationError = "Couldn't save the lower-res stream — the main stream may still have been saved."
-      root.onMutationSettled()
+  // Dynamically instantiated per call by putStream() — see its comment for
+  // why a reused singleton Process isn't used here.
+  Component {
+    id: streamPutComponent
+    Process {
+      stdinEnabled: true
+      property string payload: ""
+      property string failureMessage: ""
+      onStarted: {
+        write(payload)
+        stdinEnabled = false
+      }
+      onExited: function(exitCode) {
+        if (exitCode !== 0) root.mutationError = failureMessage
+        root.onMutationSettled()
+        destroy()
+      }
     }
   }
 
